@@ -1,6 +1,9 @@
 const {Router} = require('express');
 const multer = require('multer');
 const path = require('path');
+const imageProcessor = require('./imageProcessor');
+
+const photoPath = path.resolve(__dirname, '../../client/photo-viewer.html');
 
 // eslint-disable-next-line new-cap
 const router = Router();
@@ -15,6 +18,7 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (request, file, callback) => {
+    console.log(file);
   if (file.mimetype !== 'image/png') {
     request.fileValidationError = 'Wrong file type';
     callback(null, false, new Error('Wrong file type'));
@@ -28,15 +32,18 @@ const upload = multer({
   storage,
 });
 
-router.post('/upload', upload.single('photo'), (request, response) => {
+router.post('/upload', upload.single('photo'), async (request, response) => {
   if (request.fileValidationError) {
-    response.status(400).json({error: request.fileValidationError});
-  } else {
-    response.status(201).json({sucess: true});
+    return response.status(400).json({error: request.fileValidationError});
   }
+  try {
+    await imageProcessor(request.file.filename);
+  } catch (error) {
+    throw new Error(error);
+  }
+  return response.status(201).json({sucess: true});
 });
 
-const photoPath = path.resolve(__dirname, '../../client/photo-viewer.html');
 
 router.get('/photo-viewer', (request, response) => {
   response.sendFile(photoPath);
